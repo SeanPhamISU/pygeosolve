@@ -1,3 +1,10 @@
+# NOTE
+This modified version is essential for my FSAE suspension kinematic simulation as it modifies the solver used and add methods to update the problem's geometry
+
+# INSTALLATION
+Clone the repo, cd to the folder, then run
+"pip install . --break-system-packages --no-build-isolation"
+
 # pygeosolve
 Geometric constraint solver for Python. Uses numerical optimisation (via
 [SciPy](http://www.scipy.org/)) to determine the solution to a given set of length and
