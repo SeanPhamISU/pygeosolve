@@ -1,0 +1,10 @@
+numpy>=1.15
+scipy>=1.4
+matplotlib>=3.3.0
+
+[dev]
+sphinx
+numpydoc
+jupyter-sphinx
+black
+pytest

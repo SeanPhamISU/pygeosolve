@@ -1,0 +1,30 @@
+{
+  "files": [
+    ".github/workflows/docs.yml",
+    ".github/workflows/test.yml",
+    ".gitignore",
+    "LICENSE",
+    "README.md",
+    "docs/Makefile",
+    "docs/make.bat",
+    "docs/source/api.rst",
+    "docs/source/conf.py",
+    "docs/source/index.rst",
+    "docs/source/installation.rst",
+    "docs/source/quick-start.rst",
+    "examples/polygon.py",
+    "examples/right_angle.py",
+    "examples/triangle.py",
+    "pygeosolve/__init__.py",
+    "pygeosolve/constraints.py",
+    "pygeosolve/geometry.py",
+    "pygeosolve/plot.py",
+    "pygeosolve/problem.py",
+    "pygeosolve/util.py",
+    "pyproject.toml",
+    "setup.cfg",
+    "tests/conftest.py",
+    "tests/test_geometry.py",
+    "tests/test_solve.py"
+  ]
+}
