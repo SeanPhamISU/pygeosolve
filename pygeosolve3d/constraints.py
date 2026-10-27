@@ -51,6 +51,10 @@ class Constraint(metaclass=abc.ABCMeta):
         """The error function for this constraint."""
         raise NotImplementedError
 
+    def residual(self):
+        """Return a least-squares residual whose square matches this constraint's error."""
+        return np.sqrt(self.error())
+
     def __str__(self):
         return f"{self.__class__.__name__}(current={self.value()}, error={self.error()})"
 
@@ -98,6 +102,9 @@ class LineLengthConstraint(Constraint):
         """The current value of the constrained parameter(s)."""
         return self.line.length()
 
+    def residual(self):
+        return self.value() - self.length
+
     def error(self):
         """The current length constraint error.
 
@@ -113,21 +120,11 @@ class LineLengthConstraint(Constraint):
         self.length = length
 
 
-class LineAngleConstraint(Constraint):
-    """Constraint on the angle between two lines.
+class LinePlaneAngleConstraint(Constraint):
+    """Constrain the unsigned angle between a line and a plane, in degrees."""
 
-    Parameters
-    ----------
-    line_a, line_b : :class:`.Line`
-        The lines to constrain.
-
-    angle : :class:`float`
-        The angle (in degrees) to constrain the lines to.
-    """
-
-    def __init__(self, line_a, line_b, angle):
-        super().__init__([line_a, line_b])
-        self._angle = None
+    def __init__(self, line, plane, angle):
+        super().__init__([line, plane])
         self.angle = angle
 
     @property
@@ -136,32 +133,82 @@ class LineAngleConstraint(Constraint):
 
     @angle.setter
     def angle(self, angle):
-        self._angle = map_angle_about_zero(angle)
+        if not np.isfinite(angle) or not 0 <= angle <= 90:
+            raise ValueError("line-plane angle must be between 0 and 90 degrees")
+        self._angle = angle
 
     @property
-    def line_a(self):
+    def line(self):
         return self.primitives[0]
 
     @property
-    def line_b(self):
+    def plane(self):
         return self.primitives[1]
 
     def value(self):
-        """The current value of the constrained parameter(s)."""
-        return self.line_a.angle_to(self.line_b)
+        direction = np.array([self.line.dx(), self.line.dy(), self.line.dz()])
+        normal = self.plane.normal()
+        sine = np.dot(direction, normal) / (
+            np.linalg.norm(direction) * np.linalg.norm(normal)
+        )
+        return np.degrees(np.arcsin(np.clip(np.abs(sine), 0, 1)))
+
+    def residual(self):
+        return self.value() - self.angle
 
     def error(self):
-        """The current angle constraint error.
+        return np.abs(self.value() - self.angle) ** 2
 
-        Returns
-        -------
-        :class:`float`
-            The error.
-        """
-        return np.abs((self.value() - self.angle) / self.angle) ** 2
 
-    def set_angle(self, angle):
-        this.angle = angle
+# class LineAngleConstraint(Constraint):
+#     """Constraint on the angle between two lines.
+
+#     Parameters
+#     ----------
+#     line_a, line_b : :class:`.Line`
+#         The lines to constrain.
+
+#     angle : :class:`float`
+#         The angle (in degrees) to constrain the lines to.
+#     """
+
+#     def __init__(self, line_a, line_b, angle):
+#         super().__init__([line_a, line_b])
+#         self._angle = None
+#         self.angle = angle
+
+#     @property
+#     def angle(self):
+#         return self._angle
+
+#     @angle.setter
+#     def angle(self, angle):
+#         self._angle = map_angle_about_zero(angle)
+
+#     @property
+#     def line_a(self):
+#         return self.primitives[0]
+
+#     @property
+#     def line_b(self):
+#         return self.primitives[1]
+
+#     def value(self):
+#         """The current value of the constrained parameter(s)."""
+#         return self.line_a.angle_to(self.line_b)
+
+#     def error(self):
+#         """The current angle constraint error.
+
+#         Returns
+#         -------
+#         :class:`float`
+#             The error.
+#         """
+#         return np.abs((self.value() - self.angle) / self.angle) ** 2
+
+#     def set_angle(self, angle):
+#         this.angle = angle
 
 
 class PointToPointDistanceConstraint(Constraint):
@@ -197,3 +244,7 @@ class PointToPointDistanceConstraint(Constraint):
             The error.
         """
         return np.abs((self.point_a - self.point_b).norm() - self.distance)
+
+    def residual(self):
+        difference = (self.point_a - self.point_b).norm() - self.distance
+        return np.sign(difference) * np.sqrt(np.abs(difference))

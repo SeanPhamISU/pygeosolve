@@ -3,8 +3,8 @@
 import warnings
 from functools import cached_property
 from scipy.optimize import basinhopping, least_squares, minimize, root, shgo
-from .geometry import Point, Line, Invalid
-from .constraints import LineLengthConstraint, LineAngleConstraint
+from .geometry import Point3D, Line3D, Plane3D, Invalid
+from .constraints import LineLengthConstraint, LinePlaneAngleConstraint
 
 # Indent size.
 INDENT = " " * 4
@@ -25,10 +25,13 @@ class Problem:
             raise ValueError(f"{repr(item)} is not part of this problem")
 
     def add_point(self, *args, **kwargs):
-        self._add(Point(*args, **kwargs))
+        self._add(Point3D(*args, **kwargs))
 
     def add_line(self, *args, **kwargs):
-        self._add(Line(*args, **kwargs))
+        self._add(Line3D(*args, **kwargs))
+
+    def add_plane(self, *args, **kwargs):
+        self._add(Plane3D(*args, **kwargs))
 
     def _add(self, primitive):
         if primitive.name in self.primitives:
@@ -134,20 +137,29 @@ class Problem:
         self.constraints.append(constrain)
         return constrain
 
-    def constrain_angle_between_lines(self, line_a, line_b, angle):
-        """Add a constraint on the angle between two lines.
+    def constrain_line_plane_angle(self, line_name, plane_name, angle):
+        """Constrain the unsigned angle between a line and a plane, in degrees.
 
-        Parameters
-        ----------
-        line_a, line_b : :class:`str`
-            The names of the lines to constrain.
-
-        :class:`float`
-            The angle (in degrees) to target.
+        The angle must be between 0 (parallel to the plane) and 90 (perpendicular).
         """
-        constrain = LineAngleConstraint(self[line_a], self[line_b], angle)
+        constrain = LinePlaneAngleConstraint(self[line_name], self[plane_name], angle)
         self.constraints.append(constrain)
         return constrain
+
+    # def constrain_angle_between_lines(self, line_a, line_b, angle):
+    #     """Add a constraint on the angle between two lines.
+
+    #     Parameters
+    #     ----------
+    #     line_a, line_b : :class:`str`
+    #         The names of the lines to constrain.
+
+    #     :class:`float`
+    #         The angle (in degrees) to target.
+    #     """
+    #     constrain = LineAngleConstraint(self[line_a], self[line_b], angle)
+    #     self.constraints.append(constrain)
+    #     return constrain
 
     def _update(self, values):
         """Update current free parameter values."""
@@ -187,6 +199,10 @@ class Problem:
             self._update(x)
             return self.error()
 
+        def residuals(x):
+            self._update(x)
+            return [constraint.residual() for constraint in self.constraints]
+
         self._invalidate_caches()
         self.validate()
 
@@ -198,7 +214,7 @@ class Problem:
             elif(solver == "root"):
                 solution = root(f, x0=self.free_values, **kwargs)
             elif(solver == "ls"):
-                solution = least_squares(f, x0=self.free_values, **kwargs)
+                solution = least_squares(residuals, x0=self.free_values, **kwargs)
             elif(solver == "bh"):
                 solution = basinhopping(f, x0=self.free_values, **kwargs)
             elif(solver == "shgo"):
